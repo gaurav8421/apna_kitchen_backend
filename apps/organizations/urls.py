@@ -1,2 +1,6 @@
 from django.urls import path
-urlpatterns = []
+from .views import OrganizationMeView
+
+urlpatterns = [
+    path('me/', OrganizationMeView.as_view(), name='org-me'),
+]
