@@ -37,6 +37,8 @@ class LoginView(TokenObtainPairView):
 
 
 class LogoutView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         try:
             token = RefreshToken(request.data.get('refresh'))

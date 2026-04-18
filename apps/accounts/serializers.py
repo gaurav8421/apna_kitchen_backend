@@ -14,7 +14,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         token['role'] = user.role
-        token['org_id'] = str(user.organization_id) if user.organization_id else None
+        token['org_id'] = str(user.organization_id) if user.organization_id else ''
         token['name'] = user.name
         return token
 
@@ -25,7 +25,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'name': self.user.name,
             'email': self.user.email,
             'role': self.user.role,
-            'org_id': str(self.user.organization_id) if self.user.organization_id else None,
+            'org_id': str(self.user.organization_id) if self.user.organization_id else '',
             'org_name': self.user.organization.name if self.user.organization else None,
         }
         return data
@@ -38,6 +38,14 @@ class RegisterSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate_org_name(self, value):
+        from django.utils.text import slugify as django_slugify
+        if not django_slugify(value):
+            raise serializers.ValidationError(
+                'Organization name must contain at least one letter or number.'
+            )
+        return value
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
