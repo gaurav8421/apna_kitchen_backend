@@ -65,3 +65,22 @@ def test_cashier_cannot_create_branch(client, org):
         'name': 'Cashier Branch'
     }, content_type='application/json')
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_deleted_branch_returns_404(auth_client, org):
+    branch = Branch.objects.create(organization=org, name='To Delete')
+    url = reverse('branch-detail', kwargs={'pk': branch.id})
+    delete_response = auth_client.delete(url)
+    assert delete_response.status_code == 204
+    get_response = auth_client.get(url)
+    assert get_response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_cross_org_branch_access_blocked(auth_client):
+    other_org = Organization.objects.create(name='Other Org', slug='other-org-x')
+    other_branch = Branch.objects.create(organization=other_org, name='Other Branch')
+    url = reverse('branch-detail', kwargs={'pk': other_branch.id})
+    response = auth_client.get(url)
+    assert response.status_code == 404
