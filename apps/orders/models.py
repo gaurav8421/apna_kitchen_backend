@@ -1,21 +1,6 @@
 import uuid
 from django.db import models, transaction
-
-
-def _next_order_number(branch):
-    with transaction.atomic():
-        last = (
-            Order.objects.select_for_update()
-            .filter(branch=branch)
-            .order_by('-created_at')
-            .values_list('order_number', flat=True)
-            .first()
-        )
-        if last:
-            num = int(last.split('-')[1]) + 1
-        else:
-            num = 1
-        return f'ORD-{num:04d}'
+from django.db.models import Max
 
 
 class Order(models.Model):
@@ -59,11 +44,25 @@ class Order(models.Model):
     class Meta:
         db_table = 'orders'
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['branch', 'order_number'], name='unique_order_number_per_branch'),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.order_number:
-            self.order_number = _next_order_number(self.branch)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                # Lock all existing orders for this branch to prevent concurrent number assignment
+                existing = (
+                    Order.objects.select_for_update()
+                    .filter(branch=self.branch)
+                    .values_list('order_number', flat=True)
+                )
+                nums = [int(n.split('-')[1]) for n in existing if n]
+                last_num = max(nums) if nums else 0
+                self.order_number = f'ORD-{last_num + 1:04d}'
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return self.order_number

@@ -80,3 +80,16 @@ def test_order_item_subtotal(org, branch, owner, item):
     oi.refresh_from_db()
     from decimal import Decimal
     assert oi.subtotal == Decimal('640.00')
+
+
+@pytest.mark.django_db
+def test_order_number_not_reassigned_on_update(org, branch, owner):
+    order = Order.objects.create(
+        organization=org, branch=branch, created_by=owner,
+        order_type='dine_in', subtotal='100.00', tax='5.00', total='105.00',
+    )
+    assert order.order_number == 'ORD-0001'
+    order.status = 'preparing'
+    order.save()
+    order.refresh_from_db()
+    assert order.order_number == 'ORD-0001'
