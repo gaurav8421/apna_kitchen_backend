@@ -1,6 +1,5 @@
 import uuid
 from django.db import models, transaction
-from django.db.models import Max
 
 
 class Order(models.Model):
@@ -50,17 +49,24 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.order_number:
-            with transaction.atomic():
-                # Lock all existing orders for this branch to prevent concurrent number assignment
-                existing = (
-                    Order.objects.select_for_update()
-                    .filter(branch=self.branch)
-                    .values_list('order_number', flat=True)
-                )
-                nums = [int(n.split('-')[1]) for n in existing if n]
-                last_num = max(nums) if nums else 0
-                self.order_number = f'ORD-{last_num + 1:04d}'
-                super().save(*args, **kwargs)
+            from django.db import IntegrityError as DjIntegrityError
+            for attempt in range(2):
+                try:
+                    with transaction.atomic():
+                        existing = (
+                            Order.objects.select_for_update()
+                            .filter(branch=self.branch)
+                            .values_list('order_number', flat=True)
+                        )
+                        nums = [int(n.split('-')[1]) for n in existing if n]
+                        last_num = max(nums) if nums else 0
+                        self.order_number = f'ORD-{last_num + 1:04d}'
+                        super().save(*args, **kwargs)
+                        return
+                except DjIntegrityError:
+                    if attempt == 1:
+                        raise
+                    self.order_number = ''  # reset so next attempt regenerates
         else:
             super().save(*args, **kwargs)
 
