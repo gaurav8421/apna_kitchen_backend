@@ -59,10 +59,6 @@ class ItemVariant(models.Model):
     class Meta:
         db_table = 'item_variants'
 
-    def save(self, *args, **kwargs):
-        self.clean_fields()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f'{self.item.name} — {self.name}'
 
@@ -75,10 +71,6 @@ class ItemModifier(models.Model):
 
     class Meta:
         db_table = 'item_modifiers'
-
-    def save(self, *args, **kwargs):
-        self.clean_fields()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.item.name} + {self.name}'
