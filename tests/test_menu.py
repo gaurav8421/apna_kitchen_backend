@@ -1,4 +1,5 @@
 import pytest
+from decimal import Decimal
 from apps.organizations.models import Organization
 from apps.branches.models import Branch
 from apps.menu.models import MenuCategory, MenuItem, ItemVariant, ItemModifier
@@ -38,7 +39,8 @@ def test_item_variant_price_delta(org):
         name='Biryani', price='280.00', item_type='non_veg',
     )
     variant = ItemVariant.objects.create(item=item, name='Large', price_delta='40.00')
-    assert variant.price_delta == pytest.approx(40.00, abs=0.01)
+    variant.refresh_from_db()
+    assert variant.price_delta == Decimal('40.00')
 
 
 @pytest.mark.django_db
@@ -49,4 +51,5 @@ def test_item_modifier(org):
         name='Pizza', price='350.00', item_type='veg',
     )
     mod = ItemModifier.objects.create(item=item, name='Extra Cheese', price='30.00')
-    assert mod.price == pytest.approx(30.00, abs=0.01)
+    mod.refresh_from_db()
+    assert mod.price == Decimal('30.00')
