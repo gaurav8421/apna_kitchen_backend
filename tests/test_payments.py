@@ -73,3 +73,35 @@ def test_record_upi_payment(auth_client, org, order):
     resp = auth_client.post(reverse('payment-list'), payload, content_type='application/json')
     assert resp.status_code == 201
     assert resp.json()['reference_id'] == 'UPI123456'
+
+
+@pytest.mark.django_db
+def test_cannot_pay_for_other_org_order(auth_client, org, branch, owner):
+    """Paying for another org's order must return 403."""
+    other_org = Organization.objects.create(name='Other Pay', slug='other-pay-org')
+    other_branch = Branch.objects.create(name='OB', organization=other_org)
+    other_user = User.objects.create_user(
+        email='otherpay@test.com', password='pass1234',
+        name='Other', organization=other_org, role='owner',
+    )
+    other_order = Order.objects.create(
+        organization=other_org, branch=other_branch, created_by=other_user,
+        order_type='dine_in', subtotal='100.00', tax='5.00', total='105.00',
+    )
+    payload = {'order': str(other_order.id), 'amount': '105.00', 'method': 'cash'}
+    resp = auth_client.post(reverse('payment-list'), payload, content_type='application/json')
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_status_forced_to_completed(auth_client, order):
+    """Client cannot override status at creation time."""
+    payload = {
+        'order': str(order.id),
+        'amount': '315.00',
+        'method': 'cash',
+        'status': 'refunded',
+    }
+    resp = auth_client.post(reverse('payment-list'), payload, content_type='application/json')
+    assert resp.status_code == 201
+    assert resp.json()['status'] == 'completed'

@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions
+from rest_framework.exceptions import PermissionDenied
 from .models import Payment
 from .serializers import PaymentSerializer
 
@@ -15,9 +16,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return Payment.objects.filter(organization=org)
 
     def perform_create(self, serializer):
-        org = self.request.user.organization
+        org = getattr(self.request.user, 'organization', None)
+        if org is None:
+            raise PermissionDenied('No organization associated with this account.')
         order = serializer.validated_data.get('order')
         if order and order.organization != org:
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Order does not belong to your organization.')
-        serializer.save(organization=org)
+        serializer.save(organization=org, status='completed')
