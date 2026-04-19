@@ -8,12 +8,14 @@ class MenuCategory(models.Model):
         'organizations.Organization', on_delete=models.CASCADE, related_name='menu_categories'
     )
     branch = models.ForeignKey(
-        'branches.Branch', on_delete=models.CASCADE,
+        'branches.Branch', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='menu_categories'
     )
     name = models.CharField(max_length=200)
     sort_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'menu_categories'
@@ -41,6 +43,7 @@ class MenuItem(models.Model):
     is_available = models.BooleanField(default=True)
     track_inventory = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'menu_items'
@@ -58,6 +61,7 @@ class ItemVariant(models.Model):
 
     class Meta:
         db_table = 'item_variants'
+        ordering = ['name']
 
     def __str__(self):
         return f'{self.item.name} — {self.name}'
@@ -71,6 +75,7 @@ class ItemModifier(models.Model):
 
     class Meta:
         db_table = 'item_modifiers'
+        ordering = ['name']
 
     def __str__(self):
         return f'{self.item.name} + {self.name}'
