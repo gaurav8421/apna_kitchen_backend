@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.branches.models import Branch
 from .models import MenuCategory, MenuItem, ItemVariant, ItemModifier
 
 
@@ -20,6 +21,14 @@ class MenuItemSerializer(serializers.ModelSerializer):
     variants = ItemVariantSerializer(many=True, read_only=True)
     modifiers = ItemModifierSerializer(many=True, read_only=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and getattr(request.user, 'organization', None):
+            self.fields['category'].queryset = MenuCategory.objects.filter(
+                organization=request.user.organization
+            )
+
     class Meta:
         model = MenuItem
         fields = [
@@ -31,6 +40,14 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
 
 class MenuCategorySerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and getattr(request.user, 'organization', None):
+            self.fields['branch'].queryset = Branch.objects.filter(
+                organization=request.user.organization
+            )
+
     class Meta:
         model = MenuCategory
         fields = ['id', 'branch', 'name', 'sort_order', 'is_active']

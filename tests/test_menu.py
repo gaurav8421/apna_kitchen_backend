@@ -139,3 +139,39 @@ def test_list_items_scoped_to_org(auth_client, org):
     names = [i['name'] for i in resp.json()]
     assert 'My Item' in names
     assert 'Their Item' not in names
+
+
+@pytest.mark.django_db
+def test_create_variant_under_item(auth_client, org):
+    cat = MenuCategory.objects.create(organization=org, name='Mains', sort_order=1)
+    item = MenuItem.objects.create(organization=org, category=cat, name='Biryani', price='280.00', item_type='non_veg')
+    url = reverse('menuitem-variants-list', kwargs={'item_pk': str(item.id)})
+    resp = auth_client.post(url, {'name': 'Large', 'price_delta': '40.00'}, content_type='application/json')
+    assert resp.status_code == 201
+    assert resp.json()['name'] == 'Large'
+
+
+@pytest.mark.django_db
+def test_cross_org_item_pk_returns_404(auth_client, org):
+    """Posting to another org's item_pk must return 404, not 500."""
+    from apps.organizations.models import Organization
+    other_org = Organization.objects.create(name='Other3', slug='other-org-menu3')
+    other_cat = MenuCategory.objects.create(organization=other_org, name='X', sort_order=1)
+    other_item = MenuItem.objects.create(organization=other_org, category=other_cat, name='Other Item', price='100.00', item_type='veg')
+    url = reverse('menuitem-variants-list', kwargs={'item_pk': str(other_item.id)})
+    resp = auth_client.post(url, {'name': 'Small', 'price_delta': '0.00'}, content_type='application/json')
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_cross_org_category_rejected(auth_client, org):
+    """Posting a category UUID from another org must be rejected."""
+    from apps.organizations.models import Organization
+    other_org = Organization.objects.create(name='Other4', slug='other-org-menu4')
+    other_cat = MenuCategory.objects.create(organization=other_org, name='Other Cat', sort_order=1)
+    resp = auth_client.post(
+        reverse('menuitem-list'),
+        {'category': str(other_cat.id), 'name': 'Item', 'price': '100.00', 'item_type': 'veg'},
+        content_type='application/json',
+    )
+    assert resp.status_code == 400

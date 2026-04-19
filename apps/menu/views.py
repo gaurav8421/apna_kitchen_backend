@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 from apps.accounts.permissions import IsOwnerOrManager
 from .models import MenuCategory, MenuItem, ItemVariant, ItemModifier
 from .serializers import (
@@ -60,11 +61,14 @@ class ItemVariantViewSet(viewsets.ModelViewSet):
         org = getattr(self.request.user, 'organization', None)
         if org is None:
             return ItemVariant.objects.none()
-        return ItemVariant.objects.filter(item__organization=org, item_id=self.kwargs['item_pk'])
+        item_pk = self.kwargs.get('item_pk')
+        if item_pk is None:
+            return ItemVariant.objects.none()
+        return ItemVariant.objects.filter(item__organization=org, item_id=item_pk)
 
     def perform_create(self, serializer):
         org = getattr(self.request.user, 'organization', None)
-        item = MenuItem.objects.get(pk=self.kwargs['item_pk'], organization=org)
+        item = get_object_or_404(MenuItem, pk=self.kwargs['item_pk'], organization=org)
         serializer.save(item=item)
 
 
@@ -80,9 +84,12 @@ class ItemModifierViewSet(viewsets.ModelViewSet):
         org = getattr(self.request.user, 'organization', None)
         if org is None:
             return ItemModifier.objects.none()
-        return ItemModifier.objects.filter(item__organization=org, item_id=self.kwargs['item_pk'])
+        item_pk = self.kwargs.get('item_pk')
+        if item_pk is None:
+            return ItemModifier.objects.none()
+        return ItemModifier.objects.filter(item__organization=org, item_id=item_pk)
 
     def perform_create(self, serializer):
         org = getattr(self.request.user, 'organization', None)
-        item = MenuItem.objects.get(pk=self.kwargs['item_pk'], organization=org)
+        item = get_object_or_404(MenuItem, pk=self.kwargs['item_pk'], organization=org)
         serializer.save(item=item)
