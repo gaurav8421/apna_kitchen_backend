@@ -7,6 +7,7 @@ urlpatterns = [
     path('api/v1/auth/', include('apps.accounts.urls')),
     path('api/v1/organizations/', include('apps.organizations.urls')),
     path('api/v1/branches/', include('apps.branches.urls')),
+    path('api/v1/menu/', include('apps.menu.urls')),
 ]
 
 if settings.DEBUG:

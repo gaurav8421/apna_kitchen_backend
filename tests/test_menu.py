@@ -53,3 +53,89 @@ def test_item_modifier(org):
     mod = ItemModifier.objects.create(item=item, name='Extra Cheese', price='30.00')
     mod.refresh_from_db()
     assert mod.price == Decimal('30.00')
+
+
+from django.urls import reverse
+from apps.accounts.models import User
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+@pytest.fixture
+def owner(org):
+    return User.objects.create_user(
+        email='owner@curry.com', password='pass1234',
+        name='Owner', organization=org, role='owner',
+    )
+
+
+@pytest.fixture
+def auth_client(client, owner):
+    token = str(RefreshToken.for_user(owner).access_token)
+    client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+    return client
+
+
+@pytest.mark.django_db
+def test_create_category(auth_client):
+    url = reverse('menucategory-list')
+    resp = auth_client.post(url, {'name': 'Starters', 'sort_order': 1}, content_type='application/json')
+    assert resp.status_code == 201
+    assert resp.json()['name'] == 'Starters'
+
+
+@pytest.mark.django_db
+def test_list_categories_scoped_to_org(auth_client, org):
+    from apps.organizations.models import Organization
+    other_org = Organization.objects.create(name='Other', slug='other-org-menu')
+    MenuCategory.objects.create(organization=org, name='Mine', sort_order=1)
+    MenuCategory.objects.create(organization=other_org, name='Not Mine', sort_order=1)
+    resp = auth_client.get(reverse('menucategory-list'))
+    assert resp.status_code == 200
+    names = [c['name'] for c in resp.json()]
+    assert 'Mine' in names
+    assert 'Not Mine' not in names
+
+
+@pytest.mark.django_db
+def test_create_menu_item(auth_client, org):
+    cat = MenuCategory.objects.create(organization=org, name='Mains', sort_order=1)
+    url = reverse('menuitem-list')
+    payload = {
+        'category': str(cat.id),
+        'name': 'Dal Makhani',
+        'price': '220.00',
+        'item_type': 'veg',
+    }
+    resp = auth_client.post(url, payload, content_type='application/json')
+    assert resp.status_code == 201
+    assert resp.json()['price'] == '220.00'
+
+
+@pytest.mark.django_db
+def test_cashier_cannot_create_category(client, org):
+    cashier = User.objects.create_user(
+        email='cashier@curry.com', password='pass1234',
+        name='Cashier', organization=org, role='cashier',
+    )
+    token = str(RefreshToken.for_user(cashier).access_token)
+    client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+    resp = client.post(
+        reverse('menucategory-list'),
+        {'name': 'Drinks', 'sort_order': 5},
+        content_type='application/json',
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_list_items_scoped_to_org(auth_client, org):
+    from apps.organizations.models import Organization
+    other_org = Organization.objects.create(name='Other2', slug='other-org-menu2')
+    cat1 = MenuCategory.objects.create(organization=org, name='A', sort_order=1)
+    cat2 = MenuCategory.objects.create(organization=other_org, name='B', sort_order=1)
+    MenuItem.objects.create(organization=org, category=cat1, name='My Item', price='100.00', item_type='veg')
+    MenuItem.objects.create(organization=other_org, category=cat2, name='Their Item', price='100.00', item_type='veg')
+    resp = auth_client.get(reverse('menuitem-list'))
+    names = [i['name'] for i in resp.json()]
+    assert 'My Item' in names
+    assert 'Their Item' not in names
