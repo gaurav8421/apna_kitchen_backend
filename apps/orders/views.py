@@ -1,7 +1,6 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import MethodNotAllowed
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from apps.branches.models import Branch
@@ -32,14 +31,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         get_object_or_404(Branch, pk=branch.pk, organization=org)
         serializer.save(organization=org, created_by=self.request.user)
 
-    def update(self, request, *args, **kwargs):
-        raise MethodNotAllowed('PUT/PATCH')
-
     def partial_update(self, request, *args, **kwargs):
+        from rest_framework.exceptions import MethodNotAllowed
         raise MethodNotAllowed('PATCH')
-
-    def destroy(self, request, *args, **kwargs):
-        raise MethodNotAllowed('DELETE')
 
     @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, pk=None):
