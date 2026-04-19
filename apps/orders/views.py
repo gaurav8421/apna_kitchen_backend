@@ -1,12 +1,16 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import MethodNotAllowed
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
+from apps.branches.models import Branch
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderDetailSerializer, OrderStatusSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['branch', 'status', 'order_type']
     permission_classes = [permissions.IsAuthenticated]
@@ -23,10 +27,19 @@ class OrderViewSet(viewsets.ModelViewSet):
         return OrderDetailSerializer
 
     def perform_create(self, serializer):
-        serializer.save(
-            organization=self.request.user.organization,
-            created_by=self.request.user,
-        )
+        org = self.request.user.organization
+        branch = serializer.validated_data.get('branch')
+        get_object_or_404(Branch, pk=branch.pk, organization=org)
+        serializer.save(organization=org, created_by=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        raise MethodNotAllowed('PUT/PATCH')
+
+    def partial_update(self, request, *args, **kwargs):
+        raise MethodNotAllowed('PATCH')
+
+    def destroy(self, request, *args, **kwargs):
+        raise MethodNotAllowed('DELETE')
 
     @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, pk=None):
@@ -34,4 +47,5 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = OrderStatusSerializer(order, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        order.refresh_from_db()
         return Response(OrderDetailSerializer(order, context={'request': request}).data)

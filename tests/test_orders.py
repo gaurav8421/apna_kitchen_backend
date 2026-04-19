@@ -186,3 +186,24 @@ def test_cashier_can_create_order(client, org, branch, item):
     }
     resp = client.post(reverse('order-list'), payload, content_type='application/json')
     assert resp.status_code == 201
+
+
+@pytest.mark.django_db
+def test_cross_org_branch_rejected(auth_client, org):
+    """Creating an order with a branch from another org must return 404."""
+    from apps.organizations.models import Organization
+    other_org = Organization.objects.create(name='Other Branch Org', slug='other-branch-org')
+    other_branch = Branch.objects.create(name='Other Branch', organization=other_org)
+    item_cat = MenuCategory.objects.create(organization=org, name='Mains', sort_order=1)
+    item = MenuItem.objects.create(organization=org, category=item_cat, name='Dish', price='100.00', item_type='veg')
+    resp = auth_client.post(
+        reverse('order-list'),
+        {
+            'branch': str(other_branch.id),
+            'order_type': 'dine_in',
+            'items': [{'item': str(item.id), 'item_name': 'Dish', 'unit_price': '100.00', 'quantity': 1, 'subtotal': '100.00'}],
+            'subtotal': '100.00', 'tax': '5.00', 'total': '105.00',
+        },
+        content_type='application/json',
+    )
+    assert resp.status_code == 404
