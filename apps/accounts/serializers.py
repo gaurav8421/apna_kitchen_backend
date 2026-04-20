@@ -27,6 +27,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role': self.user.role,
             'org_id': str(self.user.organization_id) if self.user.organization_id else '',
             'org_name': self.user.organization.name if self.user.organization else None,
+            'branch_id': str(self.user.branch_id) if self.user.branch_id else None,
         }
         return data
 

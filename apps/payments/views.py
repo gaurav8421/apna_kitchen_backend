@@ -9,6 +9,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'post', 'head', 'options']
 
+    def destroy(self, request, *args, **kwargs):
+        from rest_framework.exceptions import MethodNotAllowed
+        raise MethodNotAllowed('DELETE')
+
     def get_queryset(self):
         org = getattr(self.request.user, 'organization', None)
         if org is None:

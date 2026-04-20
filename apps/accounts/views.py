@@ -28,6 +28,7 @@ class RegisterView(APIView):
                 'role': user.role,
                 'org_id': str(org.id),
                 'org_name': org.name,
+                'branch_id': str(user.branch_id) if user.branch_id else None,
             }
         }, status=status.HTTP_201_CREATED)
 

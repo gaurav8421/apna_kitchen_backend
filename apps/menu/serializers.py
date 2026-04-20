@@ -20,6 +20,7 @@ class ItemModifierSerializer(serializers.ModelSerializer):
 class MenuItemSerializer(serializers.ModelSerializer):
     variants = ItemVariantSerializer(many=True, read_only=True)
     modifiers = ItemModifierSerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,7 +33,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MenuItem
         fields = [
-            'id', 'category', 'name', 'description', 'price',
+            'id', 'category', 'category_name', 'name', 'description', 'price',
             'image_url', 'item_type', 'is_available', 'track_inventory',
             'variants', 'modifiers', 'created_at',
         ]
