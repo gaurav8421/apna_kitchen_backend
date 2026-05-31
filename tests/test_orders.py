@@ -207,3 +207,27 @@ def test_cross_org_branch_rejected(auth_client, org):
         content_type='application/json',
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_filter_orders_by_multiple_statuses(auth_client, org, branch, owner):
+    Order.objects.create(
+        organization=org, branch=branch, created_by=owner,
+        order_type='dine_in', subtotal='100.00', tax='5.00', total='105.00',
+        status='pending',
+    )
+    Order.objects.create(
+        organization=org, branch=branch, created_by=owner,
+        order_type='dine_in', subtotal='100.00', tax='5.00', total='105.00',
+        status='completed',
+    )
+    Order.objects.create(
+        organization=org, branch=branch, created_by=owner,
+        order_type='dine_in', subtotal='100.00', tax='5.00', total='105.00',
+        status='cancelled',
+    )
+    url = reverse('order-list') + '?status=pending,completed'
+    resp = auth_client.get(url)
+    assert resp.status_code == 200
+    statuses = {o['status'] for o in resp.json()}
+    assert statuses == {'pending', 'completed'}
